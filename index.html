@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Netherlands — Provinces (GDP + Population, 2020–2025)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <style>
+    html, body { height:100%; margin:0; font:14px/1.35 system-ui }
+    #ui { padding:10px; border-bottom:1px solid #e7e7e7; display:flex; gap:12px; flex-wrap:wrap; align-items:center }
+    #map { height: calc(100% - 60px) }
+    .legend { background:#fff; padding:6px 8px; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,.2) }
+    .legend .row { display:flex; align-items:center; gap:6px; margin:4px 0 }
+    .sw { width:16px; height:12px; border:1px solid #0002 }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <label>Metric
+      <select id="metric">
+        <option value="gdp">GRP (EUR bn)</option>
+        <option value="pop">Population</option>
+      </select>
+    </label>
+    <label>Year
+      <input id="year" type="range" min="2020" max="2025" step="1" value="2025">
+      <strong id="yearLabel">2025</strong>
+    </label>
+    <span id="unit"></span>
+  </div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
+  <script>
+    const ramp = ['#eef3ff','#c7d7ff','#9ebeff','#6a9cff','#3b82f6']; // 5-step
+
+    let map, layer, GEO, VALS, current = { metric: 'gdp', year: 2025 };
+
+    function projName(props) {
+      return props.provincienaam || props.name || 'Onbekend';
+    }
+    function projCode(props) {
+      return props.iso_3166_2 || null; // we joined this in step 2
+    }
+
+    async function init() {
+      // Load TopoJSON provinces and your custom values
+      const topo = await fetch('./data/nl_provinces.topo.json').then(r=>r.json());
+      const objName = Object.keys(topo.objects)[0];
+      GEO = topojson.feature(topo, topo.objects[objName]); // -> GeoJSON
+      VALS = await fetch('./data/values.json').then(r=>r.json());
+
+      // UI init
+      const years = VALS.meta.years;
+      const yr = document.getElementById('year');
+      yr.min = Math.min(...years);
+      yr.max = Math.max(...years);
+      yr.value = Math.max(...years);
+      document.getElementById('yearLabel').textContent = yr.value;
+      current.year = +yr.value;
+      document.getElementById('unit').textContent = '(' + VALS.meta.metrics[current.metric].unit + ')';
+
+      // Map
+      map = L.map('map').setView([52.1, 5.3], 7);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
+
+      layer = L.geoJSON(GEO, {
+        style: styleFeature,
+        onEachFeature: (f, l) => {
+          l.on('mouseover', () => l.setStyle({ weight: 2, color: '#222' }));
+          l.on('mouseout',  () => l.setStyle({ weight: 1, color: '#555' }));
+          l.on('click',    (e) => handleClick(f, e.latlng));
+        }
+      }).addTo(map);
+      map.fitBounds(layer.getBounds());
+
+      addLegend();
+      wireUI();
+    }
+
+    function derivedValue(code, metric, year) {
+      const node = VALS.data[code];
+      if (!node) return null;
+      if (metric === 'gdp') {
+        const v = node.gdp_base * Math.pow(1 + node.gdp_growth, year - 2020);
+        return Math.round(v * 10) / 10; // one decimal bn
+      } else {
+        const v = node.pop_base * Math.pow(1 + node.pop_growth, year - 2020);
+        return Math.round(v);
+      }
+    }
+
+    function allValues(metric, year) {
+      return Object.keys(VALS.data)
+        .map(code => derivedValue(code, metric, year))
+        .filter(v => v != null)
+        .sort((a,b)=>a-b);
+    }
+
+    function styleFeature(f) {
+      const code = projCode(f.properties);
+      const v = code ? derivedValue(code, current.metric, current.year) : null;
+      return { weight:1, color:'#555', fillColor: colorFor(v), fillOpacity: v==null?0.25:0.85 };
+    }
+
+    function colorFor(v) {
+      if (v == null) return '#dddddd';
+      const values = allValues(current.metric, current.year);
+      if (!values.length) return '#dddddd';
+      const q = p => values[Math.floor(p * (values.length - 1))];
+      const stops = [q(0.2), q(0.4), q(0.6), q(0.8)];
+      if (v <= stops[0]) return ramp[0];
+      if (v <= stops[1]) return ramp[1];
+      if (v <= stops[2]) return ramp[2];
+      if (v <= stops[3]) return ramp[3];
+      return ramp[4];
+    }
+
+    function handleClick(feature, latlng) {
+      const code = projCode(feature.properties);
+      const name = projName(feature.properties);
+      const v = code ? derivedValue(code, current.metric, current.year) : null;
+      const { label, unit } = VALS.meta.metrics[current.metric];
+      L.popup().setLatLng(latlng)
+        .setContent(`<strong>${name}</strong><br>${label} (${current.year}): ${v==null?'N/A':format(v)} ${v==null?'':unit}`)
+        .openOn(map);
+    }
+
+    function updateStyles() {
+      document.getElementById('unit').textContent =
+        '(' + VALS.meta.metrics[current.metric].unit + ')';
+      layer.setStyle(styleFeature);
+      addLegend(true);
+    }
+
+    function wireUI() {
+      document.getElementById('metric').addEventListener('change', (e) => {
+        current.metric = e.target.value; updateStyles();
+      });
+      document.getElementById('year').addEventListener('input', (e) => {
+        current.year = +e.target.value;
+        document.getElementById('yearLabel').textContent = current.year;
+        updateStyles();
+      });
+    }
+
+    function addLegend(refresh=false) {
+      if (refresh && map._legendCtl) map.removeControl(map._legendCtl);
+      const legend = L.control({position: 'bottomleft'});
+      legend.onAdd = () => {
+        const div = L.DomUtil.create('div', 'legend');
+        div.innerHTML = `<div><strong>${VALS.meta.metrics[current.metric].label}</strong> — ${current.year}</div>`;
+        const values = allValues(current.metric, current.year);
+        if (values.length) {
+          const q = p => values[Math.floor(p * (values.length - 1))];
+          const stops = [values[0], q(0.2), q(0.4), q(0.6), q(0.8), values[values.length-1]];
+          for (let i = 0; i < 5; i++) {
+            const row = document.createElement('div'); row.className = 'row';
+            row.innerHTML = `<span class="sw" style="background:${ramp[i]}"></span> ${format(stops[i])} – ${format(stops[i+1])}`;
+            div.appendChild(row);
+          }
+        } else {
+          div.innerHTML += `<div class="row">No data</div>`;
+        }
+        return div;
+      };
+      legend.addTo(map);
+      map._legendCtl = legend;
+    }
+
+    function format(x) {
+      if (x == null) return 'N/A';
+      // compact: billions keep 1 decimal, people as 1,000s+
+      if (current.metric === 'gdp') return x.toFixed(1);
+      return (x >= 1e6) ? (x/1e6).toFixed(2)+'M'
+           : (x >= 1e3) ? (x/1e3).toFixed(0)+'k'
+           : String(x);
+    }
+
+    init();
+  </script>
+</body>
+</html>
