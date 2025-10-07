@@ -8,43 +8,253 @@
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <style>
-    html, body { height:100%; margin:0; font:14px/1.35 system-ui }
-    #ui { padding:10px; border-bottom:1px solid #e7e7e7; display:flex; gap:12px; flex-wrap:wrap; align-items:center }
-    #map { height: calc(100% - 60px) }
+    html, body { height:100%; margin:0; font:14px/1.35 system-ui; background: #f8f9fa }
+    #ui { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 15px 20px; 
+      border-bottom: none; 
+      display:flex; 
+      justify-content: space-between; 
+      align-items:center; 
+      flex-wrap:wrap; 
+      gap:15px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      color: white;
+      min-height: 80px;
+    }
+    #ui h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: white;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      line-height: 1.2;
+    }
+    #ui .subtitle {
+      margin: 2px 0 0 0;
+      font-size: 12px;
+      color: rgba(255,255,255,0.9);
+      font-weight: 400;
+      line-height: 1.3;
+    }
+    .filters-container {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      max-width: 60%;
+    }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .filter-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .filter-group select {
+      padding: 8px 12px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.95);
+      color: #333;
+      font-size: 13px;
+      font-weight: 500;
+      min-width: 120px;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .filter-group select:focus {
+      outline: none;
+      border-color: rgba(255,255,255,0.8);
+      background: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .filter-group select:hover {
+      border-color: rgba(255,255,255,0.6);
+      background: white;
+    }
+    #unit {
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      background: rgba(255,255,255,0.95);
+      padding: 8px 12px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      min-width: 80px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    #resourcesBtn {
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    #resourcesBtn:hover {
+      background: rgba(255,255,255,0.3);
+      border-color: rgba(255,255,255,0.5);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+    #map { height: calc(100% - 100px) }
     .legend { background:#fff; padding:6px 8px; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,.2) }
     .legend .row { display:flex; align-items:center; gap:6px; margin:4px 0 }
     .sw { width:16px; height:12px; border:1px solid #0002 }
+    
+    @media (max-width: 768px) {
+      #ui {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 15px;
+      }
+      #ui h1 {
+        font-size: 18px;
+        text-align: center;
+      }
+      #ui .subtitle {
+        font-size: 11px;
+        text-align: center;
+      }
+      .filters-container {
+        max-width: 100%;
+        justify-content: center;
+        gap: 10px;
+      }
+      .filter-group select {
+        min-width: 100px;
+        font-size: 12px;
+        padding: 6px 10px;
+      }
+      #unit {
+        min-width: 60px;
+        font-size: 12px;
+        padding: 6px 10px;
+        color: #333;
+        background: rgba(255,255,255,0.95);
+      }
+      #resourcesBtn {
+        align-self: center;
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+    }
   </style>
 </head>
 <body>
   <div id="ui">
-    <label>Metric
-      <select id="metric">
-        <option value="gdp">GRP (EUR bn)</option>
-        <option value="pop">Population</option>
-      </select>
-    </label>
-    <label>Year
-      <input id="year" type="range" min="2020" max="2025" step="1" value="2025">
-      <strong id="yearLabel">2025</strong>
-    </label>
-    <span id="unit"></span>
+    <div>
+      <h1>Interactive Regional Analytics</h1>
+      <p class="subtitle">Explore economic and demographic data across regions</p>
+    </div>
+    <div class="filters-container">
+      <div class="filter-group">
+        <label>Country</label>
+        <select id="country">
+          <option value="netherlands">Netherlands</option>
+          <option value="germany">Germany</option>
+          <option value="france">France</option>
+          <option value="belgium">Belgium</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Metric</label>
+        <select id="metric">
+          <option value="gdp">GRP (EUR bn)</option>
+          <option value="pop">Population</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Year</label>
+        <select id="year">
+          <option value="2020">2020</option>
+          <option value="2021">2021</option>
+          <option value="2022">2022</option>
+          <option value="2023">2023</option>
+          <option value="2024">2024</option>
+          <option value="2025" selected>2025</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Unit</label>
+        <div id="unit"></div>
+      </div>
+    </div>
+    <button id="resourcesBtn">Sources</button>
   </div>
   <div id="map"></div>
+
+  <!-- Sources Modal -->
+  <div id="resourcesModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div style="background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 800px; border-radius: 8px; max-height: 80vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0; color: #333;">Data Sources</h2>
+        <span id="closeResources" style="font-size: 28px; font-weight: bold; color: #aaa; cursor: pointer;">&times;</span>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">Select Country for Sources:</label>
+        <select id="resourcesCountry" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; width: 200px;">
+          <option value="netherlands">Netherlands</option>
+          <option value="germany">Germany</option>
+          <option value="france">France</option>
+          <option value="belgium">Belgium</option>
+        </select>
+      </div>
+      
+      <div id="resourcesContent">
+        <!-- Content will be populated by JavaScript -->
+      </div>
+    </div>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/topojson-client@3"></script>
   <script>
     const ramp = ['#eef3ff','#c7d7ff','#9ebeff','#6a9cff','#3b82f6']; // 5-step
+    
+    // Distinct colors for each province (mapped by name from GeoJSON)
+    const provinceColors = {
+      'Drenthe': '#FF6B6B', // Red
+      'Flevoland': '#4ECDC4', // Teal
+      'Fryslân': '#45B7D1', // Blue (note: GeoJSON uses "Fryslân" not "Friesland")
+      'Gelderland': '#96CEB4', // Green
+      'Groningen': '#FFEAA7', // Yellow
+      'Limburg': '#DDA0DD', // Purple
+      'Noord-Brabant': '#98D8C8', // Mint
+      'Noord-Holland': '#F7DC6F', // Gold
+      'Overijssel': '#BB8FCE', // Lavender
+      'Utrecht': '#85C1E9', // Light Blue
+      'Zeeland': '#F8C471', // Orange
+      'Zuid-Holland': '#82E0AA'  // Light Green
+    };
 
-    let map, layer, GEO, VALS, current = { metric: 'gdp', year: 2025 };
+    let map, layer, GEO, VALS, current = { country: 'netherlands', metric: 'gdp', year: 2025 };
 
     function projName(props) {
-      return props.provincienaam || props.name || 'Onbekend';
+      return props.naam || props.provincienaam || props.name || 'Onbekend';
     }
     function projCode(props) {
-      return props.iso_3166_2 || null; // we joined this in step 2
+      return props.naam || props.provincienaam || null; // Use province name from GeoJSON
+    }
+    
+    function getProvinceCenter(feature) {
+      // Calculate the center point of a province for label placement
+      const bounds = L.geoJSON(feature).getBounds();
+      return bounds.getCenter();
     }
 
     async function init() {
@@ -57,10 +267,6 @@
       // UI init
       const years = VALS.meta.years;
       const yr = document.getElementById('year');
-      yr.min = Math.min(...years);
-      yr.max = Math.max(...years);
-      yr.value = Math.max(...years);
-      document.getElementById('yearLabel').textContent = yr.value;
       current.year = +yr.value;
       document.getElementById('unit').textContent = '(' + VALS.meta.metrics[current.metric].unit + ')';
 
@@ -71,8 +277,42 @@
       layer = L.geoJSON(GEO, {
         style: styleFeature,
         onEachFeature: (f, l) => {
-          l.on('mouseover', () => l.setStyle({ weight: 2, color: '#222' }));
-          l.on('mouseout',  () => l.setStyle({ weight: 1, color: '#555' }));
+          // Add label with GDP/Population value
+          const code = projCode(f.properties);
+          const value = code ? derivedValue(code, current.metric, current.year) : null;
+          const displayValue = value ? format(value) : 'N/A';
+          const unit = VALS.meta.metrics[current.metric].unit;
+          
+          // Create label for the province
+          const label = L.marker(getProvinceCenter(f), {
+            icon: L.divIcon({
+              className: 'province-label',
+              html: `<div style="
+                background: rgba(255,255,255,0.9);
+                border: 2px solid #333;
+                border-radius: 4px;
+                padding: 2px 6px;
+                font-size: 11px;
+                font-weight: bold;
+                text-align: center;
+                white-space: nowrap;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+              ">${displayValue}<br><span style="font-size: 9px;">${unit}</span></div>`,
+              iconSize: [60, 30],
+              iconAnchor: [30, 15]
+            })
+          }).addTo(map);
+          
+          l.on('mouseover', () => {
+            l.setStyle({ 
+              weight: 3, 
+              color: '#000',
+              fillOpacity: 0.9
+            });
+          });
+          l.on('mouseout',  () => {
+            l.setStyle(styleFeature(f));
+          });
           l.on('click',    (e) => handleClick(f, e.latlng));
         }
       }).addTo(map);
@@ -82,8 +322,18 @@
       wireUI();
     }
 
-    function derivedValue(code, metric, year) {
-      const node = VALS.data[code];
+    function derivedValue(provinceName, metric, year) {
+      // Find data by province name (handle both "Friesland" and "Fryslân")
+      let node = null;
+      for (const [isoCode, data] of Object.entries(VALS.data)) {
+        if (data.provincienaam === provinceName || 
+            data.name === provinceName ||
+            (provinceName === 'Fryslân' && data.name === 'Friesland')) {
+          node = data;
+          break;
+        }
+      }
+      
       if (!node) return null;
       if (metric === 'gdp') {
         const v = node.gdp_base * Math.pow(1 + node.gdp_growth, year - 2020);
@@ -95,16 +345,24 @@
     }
 
     function allValues(metric, year) {
-      return Object.keys(VALS.data)
-        .map(code => derivedValue(code, metric, year))
+      return Object.values(VALS.data)
+        .map(data => derivedValue(data.provincienaam, metric, year))
         .filter(v => v != null)
         .sort((a,b)=>a-b);
     }
 
     function styleFeature(f) {
-      const code = projCode(f.properties);
-      const v = code ? derivedValue(code, current.metric, current.year) : null;
-      return { weight:1, color:'#555', fillColor: colorFor(v), fillOpacity: v==null?0.25:0.85 };
+      const provinceName = projCode(f.properties);
+      
+      // Use distinct province colors with solid fill
+      const baseColor = provinceName && provinceColors[provinceName] ? provinceColors[provinceName] : '#dddddd';
+      
+      return { 
+        weight: 2, 
+        color: '#333', 
+        fillColor: baseColor, 
+        fillOpacity: 0.8 
+      };
     }
 
     function colorFor(v) {
@@ -135,17 +393,223 @@
         '(' + VALS.meta.metrics[current.metric].unit + ')';
       layer.setStyle(styleFeature);
       addLegend(true);
+      
+      // Update province labels
+      updateProvinceLabels();
+    }
+    
+    function updateProvinceLabels() {
+      // Remove existing labels
+      map.eachLayer(layer => {
+        if (layer instanceof L.Marker && layer.options.icon && layer.options.icon.options.className === 'province-label') {
+          map.removeLayer(layer);
+        }
+      });
+      
+      // Add new labels
+      layer.eachLayer(provinceLayer => {
+        const feature = provinceLayer.feature;
+        const code = projCode(feature.properties);
+        const value = code ? derivedValue(code, current.metric, current.year) : null;
+        const displayValue = value ? format(value) : 'N/A';
+        const unit = VALS.meta.metrics[current.metric].unit;
+        
+        const label = L.marker(getProvinceCenter(feature), {
+          icon: L.divIcon({
+            className: 'province-label',
+            html: `<div style="
+              background: rgba(255,255,255,0.9);
+              border: 2px solid #333;
+              border-radius: 4px;
+              padding: 2px 6px;
+              font-size: 11px;
+              font-weight: bold;
+              text-align: center;
+              white-space: nowrap;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            ">${displayValue}<br><span style="font-size: 9px;">${unit}</span></div>`,
+            iconSize: [60, 30],
+            iconAnchor: [30, 15]
+          })
+        }).addTo(map);
+      });
     }
 
     function wireUI() {
-      document.getElementById('metric').addEventListener('change', (e) => {
-        current.metric = e.target.value; updateStyles();
+      document.getElementById('country').addEventListener('change', (e) => {
+        current.country = e.target.value;
+        if (current.country === 'netherlands') {
+          // Zoom to Netherlands
+          map.setView([52.1, 5.3], 7);
+          map.fitBounds(layer.getBounds());
+        } else {
+          // For other countries, show a message or different view
+          alert(`${e.target.options[e.target.selectedIndex].text} data not available yet. Showing Netherlands.`);
+          document.getElementById('country').value = 'netherlands';
+        }
       });
-      document.getElementById('year').addEventListener('input', (e) => {
-        current.year = +e.target.value;
-        document.getElementById('yearLabel').textContent = current.year;
+      
+      document.getElementById('metric').addEventListener('change', (e) => {
+        current.metric = e.target.value; 
         updateStyles();
       });
+      
+      document.getElementById('year').addEventListener('change', (e) => {
+        current.year = +e.target.value;
+        updateStyles();
+      });
+      
+      // Resources modal functionality
+      document.getElementById('resourcesBtn').addEventListener('click', () => {
+        showResourcesModal();
+      });
+      
+      document.getElementById('closeResources').addEventListener('click', () => {
+        hideResourcesModal();
+      });
+      
+      // Country selector in resources modal
+      document.getElementById('resourcesCountry').addEventListener('change', () => {
+        populateResourcesContent();
+      });
+      
+      // Close modal when clicking outside
+      document.getElementById('resourcesModal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('resourcesModal')) {
+          hideResourcesModal();
+        }
+      });
+    }
+    
+    function showResourcesModal() {
+      document.getElementById('resourcesModal').style.display = 'block';
+      populateResourcesContent();
+    }
+    
+    function hideResourcesModal() {
+      document.getElementById('resourcesModal').style.display = 'none';
+    }
+    
+    function populateResourcesContent() {
+      const content = document.getElementById('resourcesContent');
+      const selectedCountry = document.getElementById('resourcesCountry').value;
+      const currentMetric = document.getElementById('metric').value;
+      const currentYear = document.getElementById('year').value;
+      
+      const countryData = {
+        netherlands: {
+          name: 'Netherlands',
+          geographicSource: 'Statistics Netherlands (CBS)',
+          geographicUrl: 'https://www.cbs.nl/',
+          economicSource: 'Statistics Netherlands (CBS)',
+          economicUrl: 'https://www.cbs.nl/',
+          dataStatus: 'Available',
+          regions: '12 Provinces',
+          dataFormat: 'GeoJSON → TopoJSON',
+          lastUpdated: '2024',
+          license: 'Open Data (CC BY 4.0)',
+          description: 'Complete data available with interactive visualization'
+        },
+        germany: {
+          name: 'Germany',
+          geographicSource: 'Federal Statistical Office (Destatis)',
+          geographicUrl: 'https://www.destatis.de/',
+          economicSource: 'Federal Statistical Office (Destatis)',
+          economicUrl: 'https://www.destatis.de/',
+          dataStatus: 'In Development',
+          regions: '16 Federal States (Bundesländer)',
+          dataFormat: 'GeoJSON → TopoJSON (planned)',
+          lastUpdated: 'TBD',
+          license: 'Open Data (planned)',
+          description: 'Data collection and processing in progress'
+        },
+        france: {
+          name: 'France',
+          geographicSource: 'National Institute of Statistics (INSEE)',
+          geographicUrl: 'https://www.insee.fr/',
+          economicSource: 'National Institute of Statistics (INSEE)',
+          economicUrl: 'https://www.insee.fr/',
+          dataStatus: 'In Development',
+          regions: '18 Regions',
+          dataFormat: 'GeoJSON → TopoJSON (planned)',
+          lastUpdated: 'TBD',
+          license: 'Open Data (planned)',
+          description: 'Data collection and processing in progress'
+        },
+        belgium: {
+          name: 'Belgium',
+          geographicSource: 'Statistics Belgium',
+          geographicUrl: 'https://statbel.fgov.be/',
+          economicSource: 'Statistics Belgium',
+          economicUrl: 'https://statbel.fgov.be/',
+          dataStatus: 'In Development',
+          regions: '3 Regions (Flanders, Wallonia, Brussels)',
+          dataFormat: 'GeoJSON → TopoJSON (planned)',
+          lastUpdated: 'TBD',
+          license: 'Open Data (planned)',
+          description: 'Data collection and processing in progress'
+        }
+      };
+      
+      const country = countryData[selectedCountry];
+      
+      content.innerHTML = `
+        <div style="margin-bottom: 30px;">
+          <h3 style="color: #1a365d; margin-bottom: 15px;">
+            ${country.name} - Geographic Data
+          </h3>
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+            <h4 style="margin: 0 0 10px 0; color: #333;">${country.regions}</h4>
+            <p style="margin: 5px 0;"><strong>Source:</strong> <a href="${country.geographicUrl}" target="_blank">${country.geographicSource}</a></p>
+            <p style="margin: 5px 0;"><strong>Format:</strong> ${country.dataFormat}</p>
+            <p style="margin: 5px 0;"><strong>Last Updated:</strong> ${country.lastUpdated}</p>
+            <p style="margin: 5px 0;"><strong>License:</strong> ${country.license}</p>
+            <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: ${country.dataStatus === 'Available' ? '#28a745' : '#ffc107'}">${country.dataStatus}</span></p>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 30px;">
+          <h3 style="color: #1a365d; margin-bottom: 15px;">Economic & Demographic Data</h3>
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+            <h4 style="margin: 0 0 10px 0; color: #333;">${currentMetric === 'gdp' ? 'Gross Regional Product (GRP)' : 'Population'}</h4>
+            <p style="margin: 5px 0;"><strong>Source:</strong> <a href="${country.economicUrl}" target="_blank">${country.economicSource}</a></p>
+            <p style="margin: 5px 0;"><strong>Base Year:</strong> 2020</p>
+            <p style="margin: 5px 0;"><strong>Projection Method:</strong> Compound Annual Growth Rate (CAGR)</p>
+            <p style="margin: 5px 0;"><strong>Data Range:</strong> 2020-2025 (${currentYear} selected)</p>
+            <p style="margin: 5px 0;"><strong>Units:</strong> ${currentMetric === 'gdp' ? 'EUR billions' : 'People'}</p>
+            <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: ${country.dataStatus === 'Available' ? '#28a745' : '#ffc107'}">${country.dataStatus}</span></p>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 30px;">
+          <h3 style="color: #1a365d; margin-bottom: 15px;">Technical Implementation</h3>
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+            <h4 style="margin: 0 0 10px 0; color: #333;">Map Technology</h4>
+            <p style="margin: 5px 0;"><strong>Mapping Library:</strong> <a href="https://leafletjs.com/" target="_blank">Leaflet.js</a> v1.9.4</p>
+            <p style="margin: 5px 0;"><strong>Data Format:</strong> <a href="https://github.com/topojson/topojson" target="_blank">TopoJSON</a> (compressed GeoJSON)</p>
+            <p style="margin: 5px 0;"><strong>Tile Source:</strong> <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a></p>
+            <p style="margin: 5px 0;"><strong>Projection:</strong> WGS84 (EPSG:4326)</p>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 30px;">
+          <h3 style="color: #1a365d; margin-bottom: 15px;">Data Methodology</h3>
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+            <h4 style="margin: 0 0 10px 0; color: #333;">Calculation Method</h4>
+            <p style="margin: 5px 0;"><strong>GDP Growth:</strong> Annual growth rate applied from 2020 base year</p>
+            <p style="margin: 5px 0;"><strong>Population Growth:</strong> Annual growth rate applied from 2020 base year</p>
+            <p style="margin: 5px 0;"><strong>Region Mapping:</strong> ${selectedCountry === 'netherlands' ? 'ISO 3166-2 codes mapped to province names' : 'Administrative region codes mapped to region names'}</p>
+            <p style="margin: 5px 0;"><strong>Color Coding:</strong> Distinct colors assigned to each region for visual identification</p>
+          </div>
+        </div>
+        
+        <div style="background: ${country.dataStatus === 'Available' ? '#d4edda' : '#fff3cd'}; padding: 15px; border-radius: 6px; border-left: 4px solid ${country.dataStatus === 'Available' ? '#28a745' : '#ffc107'};">
+          <h4 style="margin: 0 0 10px 0; color: ${country.dataStatus === 'Available' ? '#155724' : '#856404'};">${country.dataStatus === 'Available' ? 'Data Available' : 'Development Status'}</h4>
+          <p style="margin: 5px 0; font-size: 14px; color: ${country.dataStatus === 'Available' ? '#155724' : '#856404'};">
+            ${country.description}
+          </p>
+        </div>
+      `;
     }
 
     function addLegend(refresh=false) {
@@ -153,19 +617,36 @@
       const legend = L.control({position: 'bottomleft'});
       legend.onAdd = () => {
         const div = L.DomUtil.create('div', 'legend');
-        div.innerHTML = `<div><strong>${VALS.meta.metrics[current.metric].label}</strong> — ${current.year}</div>`;
-        const values = allValues(current.metric, current.year);
-        if (values.length) {
-          const q = p => values[Math.floor(p * (values.length - 1))];
-          const stops = [values[0], q(0.2), q(0.4), q(0.6), q(0.8), values[values.length-1]];
-          for (let i = 0; i < 5; i++) {
-            const row = document.createElement('div'); row.className = 'row';
-            row.innerHTML = `<span class="sw" style="background:${ramp[i]}"></span> ${format(stops[i])} – ${format(stops[i+1])}`;
-            div.appendChild(row);
-          }
-        } else {
-          div.innerHTML += `<div class="row">No data</div>`;
-        }
+        div.innerHTML = `<div><strong>Netherlands Provinces</strong> — ${current.year}</div>`;
+        div.innerHTML += `<div style="margin-top: 8px; font-size: 12px;">${VALS.meta.metrics[current.metric].label}</div>`;
+        
+        // Show province colors (using names from GeoJSON)
+        const provinces = [
+          { name: 'Zuid-Holland' },
+          { name: 'Noord-Holland' },
+          { name: 'Gelderland' },
+          { name: 'Noord-Brabant' },
+          { name: 'Overijssel' },
+          { name: 'Utrecht' },
+          { name: 'Fryslân' },
+          { name: 'Groningen' },
+          { name: 'Limburg' },
+          { name: 'Zeeland' },
+          { name: 'Drenthe' },
+          { name: 'Flevoland' }
+        ];
+        
+        provinces.forEach(province => {
+          const row = document.createElement('div'); 
+          row.className = 'row';
+          const color = provinceColors[province.name] || '#dddddd';
+          const value = derivedValue(province.name, current.metric, current.year);
+          const displayValue = value ? format(value) + ' ' + VALS.meta.metrics[current.metric].unit : 'N/A';
+          
+          row.innerHTML = `<span class="sw" style="background:${color}"></span> ${province.name}: ${displayValue}`;
+          div.appendChild(row);
+        });
+        
         return div;
       };
       legend.addTo(map);
