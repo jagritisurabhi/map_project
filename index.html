@@ -170,6 +170,19 @@
         </select>
       </div>
       <div class="filter-group">
+        <label>Category</label>
+        <select id="category">
+          <option value="economic">Economic</option>
+          <option value="demographic">Demographic</option>
+          <option value="safety">Crime & Safety</option>
+          <option value="transport">Transportation</option>
+          <option value="health">Health</option>
+          <option value="education">Education & Employment</option>
+          <option value="environment">Environment</option>
+          <option value="social">Social & Cultural</option>
+        </select>
+      </div>
+      <div class="filter-group">
         <label>Metric</label>
         <select id="metric">
           <option value="gdp">GRP (EUR bn)</option>
@@ -268,7 +281,11 @@
       const years = VALS.meta.years;
       const yr = document.getElementById('year');
       current.year = +yr.value;
-      document.getElementById('unit').textContent = '(' + VALS.meta.metrics[current.metric].unit + ')';
+      current.category = 'economic';
+      current.metric = 'gdp'; // Set default metric
+      
+      // Initialize metric options after VALS is loaded
+      updateMetricOptions();
 
       // Map
       map = L.map('map').setView([52.1, 5.3], 7);
@@ -277,31 +294,8 @@
       layer = L.geoJSON(GEO, {
         style: styleFeature,
         onEachFeature: (f, l) => {
-          // Add label with GDP/Population value
-          const code = projCode(f.properties);
-          const value = code ? derivedValue(code, current.metric, current.year) : null;
-          const displayValue = value ? format(value) : 'N/A';
-          const unit = VALS.meta.metrics[current.metric].unit;
-          
-          // Create label for the province
-          const label = L.marker(getProvinceCenter(f), {
-            icon: L.divIcon({
-              className: 'province-label',
-              html: `<div style="
-                background: rgba(255,255,255,0.9);
-                border: 2px solid #333;
-                border-radius: 4px;
-                padding: 2px 6px;
-                font-size: 11px;
-                font-weight: bold;
-                text-align: center;
-                white-space: nowrap;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-              ">${displayValue}<br><span style="font-size: 9px;">${unit}</span></div>`,
-              iconSize: [60, 30],
-              iconAnchor: [30, 15]
-            })
-          }).addTo(map);
+          // Store the feature for later label creation
+          f._layer = l;
           
           l.on('mouseover', () => {
             l.setStyle({ 
@@ -317,6 +311,9 @@
         }
       }).addTo(map);
       map.fitBounds(layer.getBounds());
+
+      // Add province labels after map is created and metric is set
+      updateProvinceLabels();
 
       addLegend();
       wireUI();
@@ -335,12 +332,33 @@
       }
       
       if (!node) return null;
-      if (metric === 'gdp') {
-        const v = node.gdp_base * Math.pow(1 + node.gdp_growth, year - 2020);
-        return Math.round(v * 10) / 10; // one decimal bn
-      } else {
-        const v = node.pop_base * Math.pow(1 + node.pop_growth, year - 2020);
+      
+      // Generic calculation for all metrics
+      const baseKey = `${metric}_base`;
+      const growthKey = `${metric}_growth`;
+      
+      if (!(baseKey in node) || !(growthKey in node)) return null;
+      
+      const base = node[baseKey];
+      const growth = node[growthKey];
+      const v = base * Math.pow(1 + growth, year - 2020);
+      
+      // Determine precision based on metric type
+      // Integer metrics: population, counts
+      if (metric === 'pop' || metric.includes('crime') || metric.includes('accident') || 
+          metric.includes('events') || metric.includes('participation')) {
         return Math.round(v);
+      }
+      // Two decimals for percentages and rates
+      else if (metric.includes('rate') || metric.includes('percent') || metric.includes('quality') ||
+               metric.includes('expectancy') || metric.includes('mortality') || metric.includes('unemployment') ||
+               metric.includes('education') || metric.includes('energy') || metric.includes('biodiversity') ||
+               metric.includes('tourism') || metric.includes('visits')) {
+        return Math.round(v * 10) / 10;
+      }
+      // One decimal for most others (GDP, expenditure, etc.)
+      else {
+        return Math.round(v * 10) / 10;
       }
     }
 
@@ -382,7 +400,7 @@
       const code = projCode(feature.properties);
       const name = projName(feature.properties);
       const v = code ? derivedValue(code, current.metric, current.year) : null;
-      const { label, unit } = VALS.meta.metrics[current.metric];
+      const { label, unit } = getCurrentMetricInfo();
       L.popup().setLatLng(latlng)
         .setContent(`<strong>${name}</strong><br>${label} (${current.year}): ${v==null?'N/A':format(v)} ${v==null?'':unit}`)
         .openOn(map);
@@ -390,7 +408,7 @@
 
     function updateStyles() {
       document.getElementById('unit').textContent =
-        '(' + VALS.meta.metrics[current.metric].unit + ')';
+        '(' + getCurrentMetricInfo().unit + ')';
       layer.setStyle(styleFeature);
       addLegend(true);
       
@@ -412,7 +430,7 @@
         const code = projCode(feature.properties);
         const value = code ? derivedValue(code, current.metric, current.year) : null;
         const displayValue = value ? format(value) : 'N/A';
-        const unit = VALS.meta.metrics[current.metric].unit;
+        const unit = getCurrentMetricInfo().unit;
         
         const label = L.marker(getProvinceCenter(feature), {
           icon: L.divIcon({
@@ -449,6 +467,12 @@
         }
       });
       
+      document.getElementById('category').addEventListener('change', (e) => {
+        current.category = e.target.value;
+        updateMetricOptions();
+        updateStyles();
+      });
+      
       document.getElementById('metric').addEventListener('change', (e) => {
         current.metric = e.target.value; 
         updateStyles();
@@ -479,6 +503,39 @@
           hideResourcesModal();
         }
       });
+      
+      // Initialize with first category and metric
+      current.category = document.getElementById('category').value;
+      updateMetricOptions();
+    }
+    
+    function getCurrentMetricInfo() {
+      return VALS.meta.categories[current.category].metrics[current.metric];
+    }
+    
+    function updateMetricOptions() {
+      if (!VALS || !VALS.meta.categories) return; // Safety check
+      
+      const metricSelect = document.getElementById('metric');
+      const category = VALS.meta.categories[current.category];
+      
+      // Clear existing options
+      metricSelect.innerHTML = '';
+      
+      // Add new options based on category
+      Object.entries(category.metrics).forEach(([key, metric]) => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = metric.label;
+        metricSelect.appendChild(option);
+      });
+      
+      // Update current metric to first option
+      current.metric = Object.keys(category.metrics)[0];
+      
+      // Update unit display
+      const unit = category.metrics[current.metric].unit;
+      document.getElementById('unit').textContent = unit;
     }
     
     function showResourcesModal() {
@@ -493,6 +550,7 @@
     function populateResourcesContent() {
       const content = document.getElementById('resourcesContent');
       const selectedCountry = document.getElementById('resourcesCountry').value;
+      const currentCategory = document.getElementById('category').value;
       const currentMetric = document.getElementById('metric').value;
       const currentYear = document.getElementById('year').value;
       
@@ -501,21 +559,17 @@
           name: 'Netherlands',
           geographicSource: 'Statistics Netherlands (CBS)',
           geographicUrl: 'https://www.cbs.nl/',
-          economicSource: 'Statistics Netherlands (CBS)',
-          economicUrl: 'https://www.cbs.nl/',
           dataStatus: 'Available',
           regions: '12 Provinces',
           dataFormat: 'GeoJSON → TopoJSON',
           lastUpdated: '2024',
           license: 'Open Data (CC BY 4.0)',
-          description: 'Complete data available with interactive visualization'
+          description: 'Complete data available with interactive visualization across 8 categories and 37 metrics'
         },
         germany: {
           name: 'Germany',
           geographicSource: 'Federal Statistical Office (Destatis)',
           geographicUrl: 'https://www.destatis.de/',
-          economicSource: 'Federal Statistical Office (Destatis)',
-          economicUrl: 'https://www.destatis.de/',
           dataStatus: 'In Development',
           regions: '16 Federal States (Bundesländer)',
           dataFormat: 'GeoJSON → TopoJSON (planned)',
@@ -527,8 +581,6 @@
           name: 'France',
           geographicSource: 'National Institute of Statistics (INSEE)',
           geographicUrl: 'https://www.insee.fr/',
-          economicSource: 'National Institute of Statistics (INSEE)',
-          economicUrl: 'https://www.insee.fr/',
           dataStatus: 'In Development',
           regions: '18 Regions',
           dataFormat: 'GeoJSON → TopoJSON (planned)',
@@ -540,8 +592,6 @@
           name: 'Belgium',
           geographicSource: 'Statistics Belgium',
           geographicUrl: 'https://statbel.fgov.be/',
-          economicSource: 'Statistics Belgium',
-          economicUrl: 'https://statbel.fgov.be/',
           dataStatus: 'In Development',
           regions: '3 Regions (Flanders, Wallonia, Brussels)',
           dataFormat: 'GeoJSON → TopoJSON (planned)',
@@ -552,6 +602,11 @@
       };
       
       const country = countryData[selectedCountry];
+      const currentMetricInfo = getCurrentMetricInfo();
+      
+      // Get category information
+      const categoryInfo = VALS.meta.categories[currentCategory];
+      const categoryMetrics = Object.keys(categoryInfo.metrics);
       
       content.innerHTML = `
         <div style="margin-bottom: 30px;">
@@ -569,15 +624,29 @@
         </div>
         
         <div style="margin-bottom: 30px;">
-          <h3 style="color: #1a365d; margin-bottom: 15px;">Economic & Demographic Data</h3>
+          <h3 style="color: #1a365d; margin-bottom: 15px;">Data Categories & Metrics</h3>
           <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-            <h4 style="margin: 0 0 10px 0; color: #333;">${currentMetric === 'gdp' ? 'Gross Regional Product (GRP)' : 'Population'}</h4>
-            <p style="margin: 5px 0;"><strong>Source:</strong> <a href="${country.economicUrl}" target="_blank">${country.economicSource}</a></p>
-            <p style="margin: 5px 0;"><strong>Base Year:</strong> 2020</p>
-            <p style="margin: 5px 0;"><strong>Projection Method:</strong> Compound Annual Growth Rate (CAGR)</p>
-            <p style="margin: 5px 0;"><strong>Data Range:</strong> 2020-2025 (${currentYear} selected)</p>
-            <p style="margin: 5px 0;"><strong>Units:</strong> ${currentMetric === 'gdp' ? 'EUR billions' : 'People'}</p>
-            <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: ${country.dataStatus === 'Available' ? '#28a745' : '#ffc107'}">${country.dataStatus}</span></p>
+            <h4 style="margin: 0 0 10px 0; color: #333;">Current Selection: ${categoryInfo.label}</h4>
+            <p style="margin: 5px 0;"><strong>Selected Metric:</strong> ${currentMetricInfo.label}</p>
+            <p style="margin: 5px 0;"><strong>Unit:</strong> ${currentMetricInfo.unit}</p>
+            <p style="margin: 5px 0;"><strong>Available Metrics in Category:</strong> ${categoryMetrics.length}</p>
+            <p style="margin: 5px 0;"><strong>Total Categories:</strong> 8 (Economic, Demographic, Crime & Safety, Transportation, Health, Education & Employment, Environment, Social & Cultural)</p>
+            <p style="margin: 5px 0;"><strong>Total Metrics:</strong> 37 across all categories</p>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 30px;">
+          <h3 style="color: #1a365d; margin-bottom: 15px;">Data Sources by Category</h3>
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+            <h4 style="margin: 0 0 10px 0; color: #333;">Primary Sources</h4>
+            <p style="margin: 5px 0;"><strong>Economic Data:</strong> <a href="${country.geographicUrl}" target="_blank">${country.geographicSource}</a></p>
+            <p style="margin: 5px 0;"><strong>Demographic Data:</strong> <a href="${country.geographicUrl}" target="_blank">${country.geographicSource}</a></p>
+            <p style="margin: 5px 0;"><strong>Crime & Safety:</strong> <a href="${country.geographicUrl}" target="_blank">${country.geographicSource}</a></p>
+            <p style="margin: 5px 0;"><strong>Transportation:</strong> <a href="${country.geographicUrl}" target="_blank">${country.geographicSource}</a></p>
+            <p style="margin: 5px 0;"><strong>Health:</strong> <a href="${country.geographicUrl}" target="_blank">${country.geographicSource}</a></p>
+            <p style="margin: 5px 0;"><strong>Education & Employment:</strong> <a href="${country.geographicUrl}" target="_blank">${country.geographicSource}</a></p>
+            <p style="margin: 5px 0;"><strong>Environment:</strong> <a href="${country.geographicUrl}" target="_blank">${country.geographicSource}</a></p>
+            <p style="margin: 5px 0;"><strong>Social & Cultural:</strong> <a href="${country.geographicUrl}" target="_blank">${country.geographicSource}</a></p>
           </div>
         </div>
         
@@ -589,6 +658,7 @@
             <p style="margin: 5px 0;"><strong>Data Format:</strong> <a href="https://github.com/topojson/topojson" target="_blank">TopoJSON</a> (compressed GeoJSON)</p>
             <p style="margin: 5px 0;"><strong>Tile Source:</strong> <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a></p>
             <p style="margin: 5px 0;"><strong>Projection:</strong> WGS84 (EPSG:4326)</p>
+            <p style="margin: 5px 0;"><strong>Data Structure:</strong> Hierarchical categories with dynamic metric loading</p>
           </div>
         </div>
         
@@ -596,10 +666,12 @@
           <h3 style="color: #1a365d; margin-bottom: 15px;">Data Methodology</h3>
           <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
             <h4 style="margin: 0 0 10px 0; color: #333;">Calculation Method</h4>
-            <p style="margin: 5px 0;"><strong>GDP Growth:</strong> Annual growth rate applied from 2020 base year</p>
-            <p style="margin: 5px 0;"><strong>Population Growth:</strong> Annual growth rate applied from 2020 base year</p>
+            <p style="margin: 5px 0;"><strong>Base Year:</strong> 2020 for all metrics</p>
+            <p style="margin: 5px 0;"><strong>Projection Method:</strong> Compound Annual Growth Rate (CAGR)</p>
+            <p style="margin: 5px 0;"><strong>Data Range:</strong> 2020-2025 (${currentYear} selected)</p>
             <p style="margin: 5px 0;"><strong>Region Mapping:</strong> ${selectedCountry === 'netherlands' ? 'ISO 3166-2 codes mapped to province names' : 'Administrative region codes mapped to region names'}</p>
             <p style="margin: 5px 0;"><strong>Color Coding:</strong> Distinct colors assigned to each region for visual identification</p>
+            <p style="margin: 5px 0;"><strong>Precision:</strong> Automatic rounding based on metric type (integers for counts, decimals for rates)</p>
           </div>
         </div>
         
@@ -618,7 +690,7 @@
       legend.onAdd = () => {
         const div = L.DomUtil.create('div', 'legend');
         div.innerHTML = `<div><strong>Netherlands Provinces</strong> — ${current.year}</div>`;
-        div.innerHTML += `<div style="margin-top: 8px; font-size: 12px;">${VALS.meta.metrics[current.metric].label}</div>`;
+        div.innerHTML += `<div style="margin-top: 8px; font-size: 12px;">${getCurrentMetricInfo().label}</div>`;
         
         // Show province colors (using names from GeoJSON)
         const provinces = [
@@ -641,7 +713,7 @@
           row.className = 'row';
           const color = provinceColors[province.name] || '#dddddd';
           const value = derivedValue(province.name, current.metric, current.year);
-          const displayValue = value ? format(value) + ' ' + VALS.meta.metrics[current.metric].unit : 'N/A';
+          const displayValue = value ? format(value) + ' ' + getCurrentMetricInfo().unit : 'N/A';
           
           row.innerHTML = `<span class="sw" style="background:${color}"></span> ${province.name}: ${displayValue}`;
           div.appendChild(row);

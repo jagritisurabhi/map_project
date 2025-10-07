@@ -1,0 +1,156 @@
+{
+  "meta": {
+    "years": [
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "metrics": {
+      "gdp": {
+        "label": "GRP (EUR bn)",
+        "unit": "EUR bn"
+      },
+      "pop": {
+        "label": "Population",
+        "unit": "people"
+      },
+      "accidents": {
+        "label": "Road Accidents",
+        "unit": "accidents"
+      },
+      "house_prices": {
+        "label": "House Prices (EUR/m²)",
+        "unit": "EUR/m²"
+      },
+      "air_quality": {
+        "label": "Air Quality (PM2.5)",
+        "unit": "μg/m³"
+      },
+      "unemployment": {
+        "label": "Unemployment Rate (%)",
+        "unit": "%"
+      }
+    }
+  },
+  "data": {
+    "NL-GR": {
+      "name": "Groningen",
+      "gdp_base": 28,
+      "gdp_growth": 0.017,
+      "pop_base": 585000,
+      "pop_growth": 0.0015,
+      "accidents_base": 1250,
+      "accidents_growth": -0.02,
+      "house_prices_base": 2800,
+      "house_prices_growth": 0.08,
+      "air_quality_base": 12.5,
+      "air_quality_growth": -0.05,
+      "unemployment_base": 3.2,
+      "unemployment_growth": -0.1,
+      "provincienaam": "Groningen",
+      "iso_3166_2": "NL-GR"
+    },
+    "NL-FR": {
+      "name": "Friesland",
+      "gdp_base": 30,
+      "gdp_growth": 0.017,
+      "pop_base": 650000,
+      "pop_growth": 0.0015,
+      "provincienaam": "Friesland",
+      "iso_3166_2": "NL-FR"
+    },
+    "NL-DR": {
+      "name": "Drenthe",
+      "gdp_base": 20,
+      "gdp_growth": 0.017,
+      "pop_base": 493000,
+      "pop_growth": 0.0015,
+      "provincienaam": "Drenthe",
+      "iso_3166_2": "NL-DR"
+    },
+    "NL-OV": {
+      "name": "Overijssel",
+      "gdp_base": 55,
+      "gdp_growth": 0.018,
+      "pop_base": 1180000,
+      "pop_growth": 0.0025,
+      "provincienaam": "Overijssel",
+      "iso_3166_2": "NL-OV"
+    },
+    "NL-FL": {
+      "name": "Flevoland",
+      "gdp_base": 22,
+      "gdp_growth": 0.02,
+      "pop_base": 423000,
+      "pop_growth": 0.003,
+      "provincienaam": "Flevoland",
+      "iso_3166_2": "NL-FL"
+    },
+    "NL-GE": {
+      "name": "Gelderland",
+      "gdp_base": 110,
+      "gdp_growth": 0.018,
+      "pop_base": 2080000,
+      "pop_growth": 0.0025,
+      "provincienaam": "Gelderland",
+      "iso_3166_2": "NL-GE"
+    },
+    "NL-UT": {
+      "name": "Utrecht",
+      "gdp_base": 95,
+      "gdp_growth": 0.021,
+      "pop_base": 1360000,
+      "pop_growth": 0.003,
+      "provincienaam": "Utrecht",
+      "iso_3166_2": "NL-UT"
+    },
+    "NL-NH": {
+      "name": "Noord-Holland",
+      "gdp_base": 200,
+      "gdp_growth": 0.02,
+      "pop_base": 2900000,
+      "pop_growth": 0.003,
+      "provincienaam": "Noord-Holland",
+      "iso_3166_2": "NL-NH"
+    },
+    "NL-ZH": {
+      "name": "Zuid-Holland",
+      "gdp_base": 185,
+      "gdp_growth": 0.02,
+      "pop_base": 3700000,
+      "pop_growth": 0.003,
+      "provincienaam": "Zuid-Holland",
+      "iso_3166_2": "NL-ZH"
+    },
+    "NL-ZE": {
+      "name": "Zeeland",
+      "gdp_base": 19,
+      "gdp_growth": 0.017,
+      "pop_base": 385000,
+      "pop_growth": 0.0015,
+      "provincienaam": "Zeeland",
+      "iso_3166_2": "NL-ZE"
+    },
+    "NL-NB": {
+      "name": "Noord-Brabant",
+      "gdp_base": 150,
+      "gdp_growth": 0.021,
+      "pop_base": 2600000,
+      "pop_growth": 0.003,
+      "provincienaam": "Noord-Brabant",
+      "iso_3166_2": "NL-NB"
+    },
+    "NL-LI": {
+      "name": "Limburg",
+      "gdp_base": 45,
+      "gdp_growth": 0.017,
+      "pop_base": 1120000,
+      "pop_growth": 0.0015,
+      "provincienaam": "Limburg",
+      "iso_3166_2": "NL-LI"
+    }
+  }
+}
